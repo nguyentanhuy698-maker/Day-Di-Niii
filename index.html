@@ -273,6 +273,24 @@ input.inp:focus{border-color:var(--accent);outline:none}
 .tips{margin:0;padding-left:18px;display:grid;gap:6px;font-size:13.5px}
 .tips b{color:var(--ink)}
 
+/* mini boss hud */
+.minihud{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translate(-50%,-140%);width:min(440px,calc(100% - 32px));display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 12px;background:#ffffffee;border:2px solid var(--line);border-radius:16px;box-shadow:0 8px 24px #a9c9d488;z-index:9;transition:transform .3s ease;cursor:pointer;backdrop-filter:blur(4px)}
+.minihud.show{transform:translate(-50%,0)}
+.minihud svg{width:40px;height:40px;display:block}
+.minihud .mn{display:grid;gap:4px;min-width:0}
+.minihud .mn b{font-family:var(--f-display);font-size:14px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.minihud .mbar{height:8px;background:#e3eef2;border-radius:6px;overflow:hidden}
+.minihud .mbar i{display:block;height:100%;background:linear-gradient(180deg,#ffa8bd,var(--hp));border-radius:6px;transition:width .35s}
+.minihud .mhp{font-size:12px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.minihud.hit{animation:minihit .35s}
+@keyframes minihit{0%,100%{transform:translate(-50%,0)}25%{transform:translate(calc(-50% - 6px),0)}50%{transform:translate(calc(-50% + 6px),0)}75%{transform:translate(calc(-50% - 3px),0)}}
+.minihud .mav{transition:filter .1s}
+.minihud.hit .mav{filter:brightness(1.6) saturate(.4)}
+.mfloat{position:fixed;font-family:var(--f-display);font-weight:800;font-size:24px;color:var(--accent-ink);text-shadow:0 2px 0 #fff,0 -2px 0 #fff,2px 0 0 #fff,-2px 0 0 #fff;pointer-events:none;z-index:10;animation:mfloat .9s ease-out forwards;white-space:nowrap}
+.mfloat.crit{color:var(--coral-ink);font-size:28px}
+.mfloat.heal{color:var(--mint-ink);font-size:18px}
+@keyframes mfloat{0%{opacity:0;transform:translate(-50%,0) scale(.6)}20%{opacity:1;transform:translate(-50%,8px) scale(1.15)}100%{opacity:0;transform:translate(-50%,40px) scale(1)}}
+
 /* modal / toast */
 .modal{position:fixed;inset:0;background:#4a355766;display:grid;place-items:center;padding:16px;z-index:10}
 .modal-card{background:linear-gradient(180deg,var(--panel-hi),var(--panel));border:3px solid var(--accent);border-radius:24px;padding:22px 20px;max-width:360px;width:100%;text-align:center;display:grid;gap:10px;animation:pop .35s ease-out}
@@ -575,6 +593,7 @@ input.inp:focus{border-color:var(--accent);outline:none}
     <button type="button" class="primary" id="mclose">Trang bị luôn</button>
   </div>
 </div>
+<div class="minihud" id="minihud" role="button" tabindex="0" aria-label="Kéo lên đấu trường"><span class="mav" id="mav"></span><span class="mn"><b id="mname">Boss</b><span class="mbar"><i id="mhpbar" style="width:100%"></i></span></span><span class="mhp" id="mhp">0 HP</span></div>
 <div class="toast" id="toast" role="status"></div>
 
 <script>
@@ -803,10 +822,21 @@ const sfx={hit:()=>beep([220,140],.07),crit:()=>beep([440,660,330],.07),drink:()
 
 /* ---------- fx ---------- */
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),1800)}
-function floatText(txt,cls){const a=$('arena');const el=document.createElement('div');el.className='float '+(cls||'');el.textContent=txt;el.style.left=(68+Math.random()*10)+'%';el.style.top=(38+Math.random()*8)+'%';a.appendChild(el);setTimeout(()=>el.remove(),1000)}
+function floatText(txt,cls){miniFloat(txt,cls);const a=$('arena');const el=document.createElement('div');el.className='float '+(cls||'');el.textContent=txt;el.style.left=(68+Math.random()*10)+'%';el.style.top=(38+Math.random()*8)+'%';a.appendChild(el);setTimeout(()=>el.remove(),1000)}
 function sparks(color){const a=$('arena');for(let i=0;i<12;i++){const s=document.createElement('div');s.className='spark';s.style.background=color;s.style.left='72%';s.style.top='55%';s.style.setProperty('--dx',(Math.random()*130-65)+'px');s.style.setProperty('--dy',(Math.random()*-100)+'px');a.appendChild(s);setTimeout(()=>s.remove(),700)}}
-function attackAnim(isCrit){const h=$('hero'),b=$('boss');h.classList.add('lunge');setTimeout(()=>{h.classList.remove('lunge');b.classList.remove('hit');void b.getBBox();b.classList.add('hit');sparks(isCrit?'#3f8aa6':'#ffc94d');if(isCrit){$('arena').classList.remove('shake');void $('arena').offsetWidth;$('arena').classList.add('shake')}},140)}
+function attackAnim(isCrit){miniHit();const h=$('hero'),b=$('boss');h.classList.add('lunge');setTimeout(()=>{h.classList.remove('lunge');b.classList.remove('hit');void b.getBBox();b.classList.add('hit');sparks(isCrit?'#3f8aa6':'#ffc94d');if(isCrit){$('arena').classList.remove('shake');void $('arena').offsetWidth;$('arena').classList.add('shake')}},140)}
 function bossSay(b,kind){$('speaker').textContent=b.n.toUpperCase();const pool=kind==='hit'?b.hit:b.lines;$('line').textContent=pool[Math.floor(Math.random()*pool.length)]}
+
+/* ---------- mini hud ---------- */
+let arenaVisible=true,lastMiniKey='';
+function miniAvatar(b){return `<svg viewBox="0 0 40 40"><path d="M6 24 C6 12 13 6 20 6 C27 6 34 12 34 24 C34 32 30 36 20 36 C10 36 6 32 6 24Z" fill="${b.c1}" stroke="#4a3557" stroke-width="2.5"/><circle cx="15" cy="21" r="3.6" fill="#fff" stroke="#4a3557" stroke-width="1.5"/><circle cx="25" cy="21" r="3.6" fill="#fff" stroke="#4a3557" stroke-width="1.5"/><circle cx="15.8" cy="21.8" r="1.8" fill="#4a3557"/><circle cx="24.2" cy="21.8" r="1.8" fill="#4a3557"/><path d="M12 15 l5 2 M28 15 l-5 2" stroke="#4a3557" stroke-width="2" stroke-linecap="round"/><path d="M16 28 q4 3 8 0" stroke="#4a3557" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`}
+function miniOn(){return !arenaVisible&&!$('view-fight').hidden}
+function setMini(){$('minihud').classList.toggle('show',miniOn())}
+function miniHit(){if(!miniOn())return;const m=$('minihud');m.classList.remove('hit');void m.offsetWidth;m.classList.add('hit')}
+function miniFloat(txt,cls){if(!miniOn())return;const r=$('minihud').getBoundingClientRect();const el=document.createElement('div');el.className='mfloat '+(cls||'');el.textContent=txt;el.style.left=(r.left+r.width*(0.55+Math.random()*0.2))+'px';el.style.top=(r.bottom-6)+'px';document.body.appendChild(el);setTimeout(()=>el.remove(),900)}
+$('minihud').addEventListener('click',()=>$('arena').scrollIntoView({behavior:'smooth',block:'start'}));
+$('minihud').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();$('arena').scrollIntoView({behavior:'smooth',block:'start'})}});
+try{new IntersectionObserver(es=>{es.forEach(e=>{arenaVisible=e.intersectionRatio>0.35});setMini()},{threshold:[0,0.35,1]}).observe($('arena'))}catch(e){}
 
 /* ---------- render: fight ---------- */
 let lastBossKey='';
@@ -818,6 +848,7 @@ function renderFight(){
   if(lastBossKey!==k){$('boss').innerHTML=bossSVG(b,bi);lastBossKey=k;bossSay(b,'line')}
   $('bossn').textContent=b.n;$('hpt').textContent=sc.hp+'/'+sc.hpMax+' HP';
   const pct=sc.hpMax?sc.hp/sc.hpMax*100:0;$('hp').style.width=pct+'%';$('hplag').style.width=pct+'%';
+  $('mname').textContent=b.n;$('mhp').textContent=sc.win?'Đã hạ!':sc.hp+' HP';$('mhpbar').style.width=pct+'%';if(lastMiniKey!==k){lastMiniKey=k;$('mav').innerHTML=miniAvatar(b)}
   $('boss').classList.toggle('dead',sc.win);
   const oc=$('arena').querySelector('.chestbtn');if(oc)oc.remove();
   if(sc.win){
@@ -1051,7 +1082,7 @@ $('r-eat').addEventListener('click',()=>{if(!lastPick)return;state.food=state.fo
 /* tabs */
 const TABS=['fight','spend','menu'];
 function showTab(t){if(!TABS.includes(t))t='fight';TABS.forEach(x=>{$('view-'+x).hidden=x!==t;$('tab-'+x).setAttribute('aria-selected',x===t)});
-  try{localStorage.setItem('h630-tab',t)}catch(e){}if(t==='spend')renderSpend();if(t==='menu'){renderMenu();resetWheel()}}
+  try{localStorage.setItem('h630-tab',t)}catch(e){}setMini();if(t==='spend')renderSpend();if(t==='menu'){renderMenu();resetWheel()}}
 TABS.forEach(x=>$('tab-'+x).addEventListener('click',()=>showTab(x)));
 
 $('prev').addEventListener('click',()=>{if(off>-6){off--;renderFight()}});
